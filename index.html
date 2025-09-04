@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8"/>
+  <title>Revival Hub</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <style>
+    :root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#94a3b8}
+    *{box-sizing:border-box}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
+    #sidebar{width:230px;background:var(--panel);padding:16px 12px;display:flex;flex-direction:column;gap:8px}
+    #brand{font-weight:700;margin-bottom:8px}
+    .robux{margin-top:4px;font-size:.95rem;opacity:.9}
+    .btn{width:100%;padding:10px;background:#1f2937;border:1px solid #243041;border-radius:10px;color:var(--text);cursor:pointer;text-align:left}
+    .btn:hover{background:#222f43}
+    #content{flex:1;padding:20px}
+    .card{background:#0b1220;border:1px solid #1b2940;border-radius:14px;padding:16px;margin-bottom:16px}
+    .hidden{display:none}
+    .pill{display:inline-block;padding:2px 8px;border:1px solid #2b3953;border-radius:999px;font-size:.8rem;margin-left:6px}
+    .muted{color:var(--muted)}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+    .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px}
+    input,select,textarea{width:100%;padding:10px;border:1px solid #263349;border-radius:10px;background:#0b1324;color:var(--text);margin:6px 0}
+    .item{background:#111827;border:1px solid #243041;border-radius:12px;padding:12px;text-align:center;position:relative}
+    .item img{width:100%;height:140px;object-fit:cover;border-radius:8px;margin-bottom:8px}
+    .tag{position:absolute;top:8px;left:8px;font-size:.75rem;padding:2px 6px;border-radius:8px}
+    .inline-btn{padding:6px 10px;border:1px solid #2b3953;border-radius:8px;background:#182339;color:var(--text);cursor:pointer}
+    .inline-btn:hover{background:#1b2740}
+    .list{border:1px solid #1b2940;border-radius:12px;padding:10px;max-height:320px;overflow:auto}
+    /* Toasts */
+    #toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:10px;z-index:9999}
+    .toast{background:#1f2937;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.3);animation:fadein .25s}
+    @keyframes fadein{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+    /* Admin Panel */
+    #adminPanel{position:fixed;top:60px;left:10%;right:10%;background:#0b1220;border:1px solid #1e2b43;border-radius:14px;padding:16px;z-index:100;display:none;max-height:80vh;overflow:auto}
+    #closeAdmin{position:absolute;top:10px;right:10px}
+  </style>
+  <!-- Firebase -->
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
+</head>
+<body>
+  <aside id="sidebar">
+    <div id="brand">Revival Hub</div>
+    <div id="userBox" class="card">
+      <div id="authBox">
+        <input id="user" placeholder="Usuario">
+        <input id="pass" placeholder="Contraseña" type="password">
+        <div class="row">
+          <button class="btn" onclick="register()">Registrar</button>
+          <button class="btn" onclick="login()">Login</button>
+        </div>
+      </div>
+      <div id="sessionBox" class="hidden">
+        <div>Hola, <b id="who"></b><span id="adminTag" class="pill hidden">ADMIN</span></div>
+        <div id="banNote" class="muted hidden" style="margin-top:6px;"></div>
+        <div class="robux">💰 Robux: <b id="robux">0</b></div>
+        <div style="margin-top:8px"><button class="btn" onclick="logout()">Cerrar sesión</button></div>
+      </div>
+    </div>
+    <button class="btn" onclick="loadMarket()">Marketplace</button>
+    <button class="btn" onclick="loadProfile()">Profile</button>
+    <button class="btn" onclick="loadPromocodes()">Promocodes</button>
+    <button class="btn" onclick="loadTradeos()">Tradeos</button>
+    <button class="btn" onclick="loadFriends()">Friends</button>
+    <button class="btn" onclick="loadAvatar()">Avatar</button>
+  </aside>
+
+  <main id="content">
+    <div class="card"><h2>Bienvenido a Revival Hub</h2><p class="muted">Regístrate o inicia sesión para empezar.</p></div>
+  </main>
+
+  <!-- Toasts -->
+  <div id="toasts"></div>
+
+  <!-- Admin Panel -->
+  <div id="adminPanel">
+    <button id="closeAdmin" class="inline-btn" onclick="toggleAdmin(false)">Cerrar</button>
+    <h2>Admin Panel</h2>
+
+    <div class="card">
+      <h3>Subir Ítem a Marketplace</h3>
+      <input id="itName" placeholder="Nombre del ítem">
+      <input id="itImg" placeholder="URL de la imagen">
+      <input id="itPrice" type="number" placeholder="Precio">
+      <input id="itStock" type="number" placeholder="Stock">
+      <div class="row">
+        <input id="itTagText" placeholder="Tag (opcional)">
+        <input id="itTagColor" placeholder="Color texto (ej: #fff)">
+        <input id="itTagBg" placeholder="Color fondo (ej: #22c55e)">
+      </div>
+      <button class="inline-btn" onclick="addItem()">Publicar ítem</button>
+    </div>
+
+    <div class="card">
+      <h3>Dar Robux</h3>
+      <div class="row">
+        <input id="giveUser" placeholder="Usuario destino">
+        <input id="giveAmount" type="number" placeholder="Cantidad">
+      </div>
+      <input id="giveMsg" placeholder="Mensaje (opcional)">
+      <button class="inline-btn" onclick="giveRobux()">Enviar Robux</button>
+    </div>
+
+    <div class="card">
+      <h3>Banear jugador</h3>
+      <div class="row">
+        <input id="banUser" placeholder="Usuario">
+        <input id="banReason" placeholder="Razón">
+      </div>
+      <input id="banMessage" placeholder="Mensaje para el jugador">
+      <div class="row">
+        <button class="inline-btn" onclick="banUser(true)">Aplicar BAN</button>
+        <button class="inline-btn" onclick="banUser(false)">Quitar BAN</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Crear Promocode</h3>
+      <div class="row">
+        <input id="pcCode" placeholder="Código">
+        <select id="pcType">
+          <option value="robux">Robux</option>
+          <option value="item">Ítem</option>
+        </select>
+      </div>
+      <div id="pcRobuxBox"><input id="pcRobux" type="number" placeholder="Cantidad de Robux"></div>
+      <div id="pcItemBox" class="hidden">
+        <input id="pcItemId" placeholder="ID de ítem existente">
+      </div>
+      <button class="inline-btn" onclick="createPromocode()">Crear código</button>
+    </div>
+  </div>
+
+  <script>
+    // ===== Firebase =====
+    const firebaseConfig = {
+      apiKey: "AIzaSyBwj_as6pb5Bg81F9Cl9VWTKkekMM9Exfk",
+      authDomain: "pekora-forum.firebaseapp.com",
+      projectId: "pekora-forum"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
+
+    // ===== Helpers =====
+    let currentUser = null;
+    function $(id){return document.getElementById(id);}
+    function showToast(msg){const t=document.createElement("div");t.className="toast";t.innerText=msg;$("toasts").appendChild(t);setTimeout(()=>t.remove(),3800);}
+    async function getUserDoc(u){return db.collection("users").doc(u).get();}
+    function requireLogin(){ if(!currentUser){alert("Inicia sesión primero"); return false;} return true; }
+
+    // ===== Auth =====
+    async function register(){
+      const u=$("user").value.trim(), p=$("pass").value.trim();
+      if(!u||!p) return alert("Faltan datos");
+      const ref=db.collection("users").doc(u);
+      if((await ref.get()).exists) return alert("Usuario ya existe");
+      await ref.set({pass:p,robux:100,friends:[],friendRequests:[],usedCodes:[],equipped:[],banned:{flag:false,reason:"",msg:""}});
+      localStorage.setItem("session",u);
+      startApp(u);
+    }
+    async function login(){
+      const u=$("user").value.trim(), p=$("pass").value.trim();
+      if(!u||!p) return alert("Faltan datos");
+      const snap=await getUserDoc(u);
+      if(!snap.exists) return alert("No existe usuario");
+      const data=snap.data();
+      if(data.pass!==p) return alert("Contraseña incorrecta");
+      if(data.banned?.flag){$("banNote").classList.remove("hidden");$("banNote").innerText=`🚫 Banneado: ${data.banned.reason} · ${data.banned.msg||""}`;}
+      localStorage.setItem("session",u);
+      startApp(u);
+    }
+    function logout(){localStorage.removeItem("session"); location.reload();}
+    async function startApp(u){
+      currentUser=u;
+      $("authBox").classList.add("hidden");
+      $("sessionBox").classList.remove("hidden");
+      $("who").innerText=u;
+      if(u==="ROBLOX") $("adminTag").classList.remove("hidden");
+      updateRobux();
+      // Listeners de notifs (trade entrante)
+      db.collection("trades").where("to","==",u).where("status","==","pending").onSnapshot(s=>{
+        s.docChanges().forEach(ch=>{
+          if(ch.type==="added"){
+            const t=ch.doc.data();
+            if(!t.notified){ showToast("📩 Trade recibido de "+t.from); ch.doc.ref.update({notified:true}); }
+          }
+        });
+      });
+    }
+    async function updateRobux(){
+      if(!currentUser) return;
+      const snap=await getUserDoc(currentUser);
+      if(snap.exists) $("robux").innerText = snap.data().robux || 0;
+    }
+    window.onload=()=>{const s=localStorage.getItem("session"); if(s) startApp(s); };
+
+    // ===== Sidebar actions =====
+    async function loadMarket(){
+      if(!requireLogin())return;
+      $("content").innerHTML=`<div class="card"><h2>Marketplace</h2><div id="marketGrid" class="grid">Cargando…</div></div>`;
+      const q=await db.collection("items").orderBy("ts","desc").get();
+      const grid=$("marketGrid"); grid.innerHTML="";
+      if(q.empty){grid.innerHTML="<div class='muted'>No hay ítems</div>";return;}
+      q.forEach(doc=>{
+        const it=doc.data(), id=doc.id;
+        const tag=it.tag?`<span class="tag" style="color:${it.tag.color};background:${it.tag.bg}">${it.tag.text}</span>`:"";
+        grid.innerHTML+=`
+          <div class="item">
+            ${tag}
+            <img src="${it.img||""}" alt="">
+            <b>${it.name||"-"}</b>
+            <div>${it.price||0} 💰 · Stock: <span id="stock_${id}">${it.stock||0}</span></div>
+            <button class="inline-btn" onclick="buyItem('${id}')">Comprar</button>
+          </div>`;
+      });
+    }
+    async function buyItem(id){
+      if(!requireLogin())return;
+      const uref=db.collection("users").doc(currentUser);
+      const iref=db.collection("items").doc(id);
+      const [us, is]=await Promise.all([uref.get(), iref.get()]);
+      if(!us.exists||!is.exists) return;
+      const u=us.data(), it=is.data();
+      if(u.banned?.flag) return alert(`Banneado: ${u.banned.reason}`);
+      if(it.stock<=0) return alert("NO HAY STOCK");
+      if((u.robux||0) < (it.price||0)) return alert("No tienes suficientes Robux");
+      await uref.update({robux: (u.robux||0) - (it.price||0)});
+      await iref.update({stock: (it.stock||0) - 1});
+      await uref.collection("inventory").add({name:it.name,img:it.img,price:it.price,ts:Date.now(),source:"market",itemId:id});
+      showToast("✅ Compraste "+it.name);
+      updateRobux(); loadMarket();
+    }
+
+    async function loadProfile(){
+      if(!requireLogin())return;
+      $("content").innerHTML=`<div class="card"><h2>Profile</h2><div id="inv" class="grid">Cargando…</div></div>`;
+      const q=await db.collection("users").doc(currentUser).collection("inventory").get();
+      const inv=$("inv"); inv.innerHTML="";
+      if(q.empty){inv.innerHTML="<div class='muted'>Inventario vacío</div>";return;}
+      q.forEach(d=>{const it=d.data(); inv.innerHTML+=`<div class="item"><img src="${it.img}"><b>${it.name}</b></div>`;});
+    }
+
+    function loadPromocodes(){
+      if(!requireLogin())return;
+      $("content").innerHTML=`
+        <div class="card">
+          <h2>Promocodes</h2>
+          <div class="row">
+            <input id="redeemCode" placeholder="Ingresa código">
+            <button class="inline-btn" onclick="redeemCode()">Canjear</button>
+          </div>
+        </div>
+        ${currentUser==="ROBLOX" ? `
+        <div class="card">
+          <h3>Crear código (admin)</h3>
+          <div class="row">
+            <input id="pcCode2" placeholder="Código">
+            <select id="pcType2"><option value="robux">Robux</option><option value="item">Ítem</option></select>
+          </div>
+          <div id="pcRobuxBox2"><input id="pcRobux2" type="number" placeholder="Cantidad de Robux"></div>
+          <div id="pcItemBox2" class="hidden"><input id="pcItemId2" placeholder="ID de ítem existente"></div>
+          <button class="inline-btn" onclick="createPromocodeUI()">Crear código</button>
+        </div>` : ``}
+      `;
+      // toggle UI creators
+      const sel1=$("pcType2"); if(sel1){ sel1.onchange=()=>{ if(sel1.value==="robux"){ $("pcRobuxBox2").classList.remove("hidden"); $("pcItemBox2").classList.add("hidden"); } else { $("pcItemBox2").classList.remove("hidden"); $("pcRobuxBox2").classList.add("hidden"); } } }
+    }
+
+    async function redeemCode(){
+      const code=$("redeemCode").value.trim();
+      if(!code) return;
+      const q=await db.collection("promocodes").doc(code).get();
+      if(!q.exists) return alert("Código inválido");
+      const pc=q.data();
+      if(pc.active===false) return alert("Código desactivado");
+      const uref=db.collection("users").doc(currentUser);
+      const us=await uref.get(); const u=us.data();
+      if((u.usedCodes||[]).includes(code)) return alert("Ya usaste este código");
+      if(pc.type==="robux"){
+        await uref.update({robux:(u.robux||0)+ (pc.amount||0), usedCodes:[...(u.usedCodes||[]), code]});
+        showToast(`🎁 +${pc.amount||0} Robux por código`);
+        updateRobux();
+      }else if(pc.type==="item" && pc.itemId){
+        const itemSnap=await db.collection("items").doc(pc.itemId).get();
+        if(!itemSnap.exists) return alert("Ítem no disponible");
+        const it=itemSnap.data();
+        await uref.collection("inventory").add({name:it.name,img:it.img,price:it.price,ts:Date.now(),source:"code",itemId:pc.itemId});
+        await uref.update({usedCodes:[...(u.usedCodes||[]), code]});
+        showToast(`🎁 Ítem ${it.name} agregado`);
+      }
+    }
+    async function createPromocodeUI(){
+      if(currentUser!=="ROBLOX") return alert("Solo admin");
+      const code=$("pcCode2").value.trim(), type=$("pcType2").value;
+      if(!code) return alert("Falta código");
+      if(type==="robux"){
+        const amount=parseInt($("pcRobux2").value)||0;
+        await db.collection("promocodes").doc(code).set({type:"robux",amount,active:true,createdBy:"ROBLOX",ts:Date.now()});
+      }else{
+        const itemId=$("pcItemId2").value.trim(); if(!itemId) return alert("Falta ID de ítem");
+        await db.collection("promocodes").doc(code).set({type:"item",itemId,active:true,createdBy:"ROBLOX",ts:Date.now()});
+      }
+      showToast("✅ Código creado");
+      $("pcCode2").value=$("pcRobux2").value=$("pcItemId2").value="";
+    }
+
+    // ===== Friends =====
+    function loadFriends(){
+      if(!requireLogin())return;
+      $("content").innerHTML=`
+        <div class="card">
+          <h2>Friends</h2>
+          <div class="row">
+            <input id="friendSearch" placeholder="Buscar usuario">
+            <button class="inline-btn" onclick="sendFriendRequest()">Agregar</button>
+          </div>
+        </div>
+        <div class="cols">
+          <div class="card">
+            <h3>Solicitudes recibidas</h3>
+            <div id="reqIn" class="list">Cargando…</div>
+          </div>
+          <div class="card">
+            <h3>Tus amigos</h3>
+            <div id="friendsList" class="list">Cargando…</div>
+          </div>
+        </div>
+      `;
+      renderFriends();
+    }
+    async function sendFriendRequest(){
+      const target=$("friendSearch").value.trim();
+      if(!target||target===currentUser) return;
+      const tRef=db.collection("users").doc(target);
+      const tSnap=await tRef.get(); if(!tSnap.exists) return alert("Usuario no existe");
+      const data=tSnap.data(); const already=(data.friendRequests||[]).includes(currentUser) || (data.friends||[]).includes(currentUser);
+      if(already) return alert("Ya existe solicitud o es tu amigo");
+      await tRef.update({friendRequests:[...(data.friendRequests||[]), currentUser]});
+      showToast("📨 Solicitud enviada");
+    }
+    function renderFriends(){
+      // Solicitudes
+      db.collection("users").doc(currentUser).onSnapshot(s=>{
+        const d=s.data();
+        const req=(d.friendRequests||[]);
+        const box=$("reqIn"); box.innerHTML="";
+        if(req.length===0){box.innerHTML="<div class='muted'>Sin solicitudes</div>"; return;}
+        req.forEach(u=>{
+          box.innerHTML+=`
+            <div class="row" style="justify-content:space-between">
+              <div><b>${u}</b></div>
+              <div>
+                <button class="inline-btn" onclick="acceptFriend('${u}')">Aceptar</button>
+                <button class="inline-btn" onclick="declineFriend('${u}')">Rechazar</button>
+              </div>
+            </div>`;
+        });
+        // Amigos
+        const friends=(d.friends||[]);
+        const fl=$("friendsList"); fl.innerHTML="";
+        if(friends.length===0){fl.innerHTML="<div class='muted'>Aún no tienes amigos</div>"; return;}
+        friends.forEach(f=>{
+          fl.innerHTML+=`
+            <div class="card">
+              <div class="row" style="justify-content:space-between">
+                <div><b>${f}</b></div>
+                <div class="row">
+                  <button class="inline-btn" onclick="viewFriendInv('${f}')">Ver inventario</button>
+                  <button class="inline-btn" onclick="giftRobux('${f}')">Regalar Robux</button>
+                  <button class="inline-btn" onclick="openTrade('${f}')">Tradear</button>
+                </div>
+              </div>
+            </div>`;
+        });
+      });
+    }
+    async function acceptFriend(u){
+      const meRef=db.collection("users").doc(currentUser);
+      const frRef=db.collection("users").doc(u);
+      const [me,fr]=await Promise.all([meRef.get(),frRef.get()]);
+      const md=me.data(), fd=fr.data();
+      await meRef.update({friendRequests:(md.friendRequests||[]).filter(x=>x!==u), friends:[...(md.friends||[]), u]});
+      await frRef.update({friends:[...(fd.friends||[]), currentUser]});
+      showToast("✅ Ahora son amigos");
+    }
+    async function declineFriend(u){
+      const meRef=db.collection("users").doc(currentUser);
+      const me=await meRef.get(); const md=me.data();
+      await meRef.update({friendRequests:(md.friendRequests||[]).filter(x=>x!==u)});
+    }
+    async function viewFriendInv(friend){
+      const c=$("content");
+      c.innerHTML=`
+        <div class="card">
+          <h2>Inventario de ${friend}</h2>
+          <div id="friendInv" class="grid">Cargando…</div>
+          <button class="inline-btn" onclick="loadFriends()">Volver</button>
+        </div>`;
+      const q=await db.collection("users").doc(friend).collection("inventory").get();
+      const g=$("friendInv"); g.innerHTML="";
+      if(q.empty){g.innerHTML="<div class='muted'>Inventario vacío</div>";return;}
+      q.forEach(d=>{const it=d.data(); g.innerHTML+=`<div class="item"><img src="${it.img}"><b>${it.name}</b></div>`;});
+    }
+    async function giftRobux(friend){
+      const amt=prompt("Cantidad de Robux a regalar a "+friend);
+      const n=parseInt(amt||"0"); if(!n||n<=0) return;
+      const meRef=db.collection("users").doc(currentUser);
+      const frRef=db.collection("users").doc(friend);
+      const [me,fr]=await Promise.all([meRef.get(),frRef.get()]);
+      const md=me.data(), fd=fr.data();
+      if((md.robux||0)<n) return alert("No tienes suficientes Robux");
+      await meRef.update({robux:(md.robux||0)-n});
+      await frRef.update({robux:(fd.robux||0)+n});
+      showToast(`🎁 Regalaste ${n} Robux a ${friend}`);
+      updateRobux();
+    }
+
+    // ===== Tradeos =====
+    function loadTradeos(){
+      if(!requireLogin())return;
+      $("content").innerHTML=`
+        <div class="card">
+          <h2>Tradeos</h2>
+          <div id="tradeBuilder" class="hidden"></div>
+          <div class="cols">
+            <div><h3>Entrantes</h3><div id="incoming" class="list">Cargando…</div></div>
+            <div><h3>Salientes</h3><div id="outgoing" class="list">Cargando…</div></div>
+          </div>
+        </div>`;
+      renderTrades();
+    }
+    function openTrade(friend){
+      // Builder: elegir mis ítems y los del amigo
+      $("content").scrollIntoView();
+      const box=$("tradeBuilder"); box.classList.remove("hidden");
+      box.innerHTML=`
+        <div class="card">
+          <h3>Nuevo trade con ${friend}</h3>
+          <div class="cols">
+            <div>
+              <h4>Tus ítems (elige al menos 1)</h4>
+              <div id="myItems" class="list">Cargando…</div>
+            </div>
+            <div>
+              <h4>Ítems de ${friend} (elige lo que quieres)</h4>
+              <div id="theirItems" class="list">Cargando…</div>
+            </div>
+          </div>
+          <div class="row" style="margin-top:8px">
+            <button class="inline-btn" onclick="sendTradeFromUI('${friend}')">Enviar trade</button>
+            <button class="inline-btn" onclick="cancelTradeUI()">Cancelar</button>
+          </div>
+        </div>`;
+      // cargar inventarios
+      db.collection("users").doc(currentUser).collection("inventory").get().then(s=>{
+        const m=$("myItems"); m.innerHTML="";
+        if(s.empty){m.innerHTML="<div class='muted'>Vacío</div>";return;}
+        s.forEach(d=>{const it=d.data(); m.innerHTML+=`<label class="row"><input type="checkbox" name="mine" value="${d.id}"> ${it.name}</label>`;});
+      });
+      db.collection("users").doc(friend).collection("inventory").get().then(s=>{
+        const t=$("theirItems"); t.innerHTML="";
+        if(s.empty){t.innerHTML="<div class='muted'>Vacío</div>";return;}
+        s.forEach(d=>{const it=d.data(); t.innerHTML+=`<label class="row"><input type="checkbox" name="theirs" value="${d.id}"> ${it.name}</label>`;});
+      });
+    }
+    function cancelTradeUI(){ $("tradeBuilder").classList.add("hidden"); $("tradeBuilder").innerHTML=""; }
+    async function sendTradeFromUI(friend){
+      const mine=[...document.querySelectorAll('input[name="mine"]:checked')].map(i=>i.value);
+      const theirs=[...document.querySelectorAll('input[name="theirs"]:checked')].map(i=>i.value);
+      if(mine.length===0) return alert("Debes ofrecer al menos 1 ítem");
+      // cargar objetos completos
+      const myInvRef=db.collection("users").doc(currentUser).collection("inventory");
+      const frInvRef=db.collection("users").doc(friend).collection("inventory");
+      const offered=[]; for(const id of mine){ const d=await myInvRef.doc(id).get(); offered.push({id, ...d.data()}); }
+      const requested=[]; for(const id of theirs){ const d=await frInvRef.doc(id).get(); requested.push({id, ...d.data()}); }
+      await db.collection("trades").add({from:currentUser,to:friend,offered,requested,status:"pending",ts:Date.now(),notified:false});
+      showToast("✅ Trade enviado");
+      cancelTradeUI();
+    }
+    function renderTrades(){
+      const inc=$("incoming"), out=$("outgoing");
+      db.collection("trades").where("to","==",currentUser).orderBy("ts","desc").onSnapshot(s=>{
+        inc.innerHTML="";
+        if(s.empty){inc.innerHTML="<div class='muted'>Sin trades</div>";return;}
+        s.forEach(d=>{
+          const t=d.data();
+          inc.innerHTML+=`
+            <div class="card">
+              <div><b>${t.from}</b> te envió un trade</div>
+              <div class="muted">Ofrece: ${t.offered.map(o=>o.name).join(", ")||"—"} · Pide: ${t.requested.map(r=>r.name).join(", ")||"—"}</div>
+              <div class="row">
+                <button class="inline-btn" onclick="acceptTrade('${d.id}')">Aceptar</button>
+                <button class="inline-btn" onclick="declineTrade('${d.id}')">Rechazar</button>
+              </div>
+            </div>`;
+          if(!t.notified){ d.ref.update({notified:true}); showToast("📩 Nuevo tradeo de "+t.from); }
+        });
+      });
+      db.collection("trades").where("from","==",currentUser).orderBy("ts","desc").onSnapshot(s=>{
+        out.innerHTML="";
+        if(s.empty){out.innerHTML="<div class='muted'>Sin trades</div>";return;}
+        s.forEach(d=>{ const t=d.data(); out.innerHTML+=`<div class="card">Para <b>${t.to}</b> · Estado: ${t.status}</div>`; });
+      });
+    }
+    async function acceptTrade(id){
+      const ref=db.collection("trades").doc(id);
+      const snap=await ref.get(); if(!snap.exists) return;
+      const t=snap.data(); if(t.status!=="pending") return;
+      // mover ítems
+      const fromRef=db.collection("users").doc(t.from).collection("inventory");
+      const toRef=db.collection("users").doc(t.to).collection("inventory");
+      // offered: de FROM -> TO
+      for(const o of (t.offered||[])){ await fromRef.doc(o.id).delete(); await toRef.add({name:o.name,img:o.img,price:o.price,ts:Date.now(),source:"trade",from:t.from}); }
+      // requested: de TO -> FROM
+      for(const r of (t.requested||[])){ await toRef.doc(r.id).delete(); await fromRef.add({name:r.name,img:r.img,price:r.price,ts:Date.now(),source:"trade",from:t.to}); }
+      await ref.update({status:"accepted",acceptedAt:Date.now()});
+      showToast("✅ Trade aceptado");
+    }
+    async function declineTrade(id){ await db.collection("trades").doc(id).update({status:"declined"}); showToast("❌ Trade rechazado"); }
+
+    // ===== Avatar =====
+    async function loadAvatar(){
+      if(!requireLogin())return;
+      $("content").innerHTML=`
+        <div class="card">
+          <h2>Avatar</h2>
+          <p class="muted">Equipa ítems de tu inventario. Los seleccionados quedan guardados en tu perfil.</p>
+          <div id="avatarInv" class="list">Cargando…</div>
+          <div class="row" style="margin-top:8px">
+            <button class="inline-btn" onclick="saveAvatar()">Guardar Avatar</button>
+          </div>
+          <div id="avatarPreview" class="card" style="margin-top:12px">
+            <h3>Equipado</h3>
+            <div id="equippedBox" class="grid"></div>
+          </div>
+        </div>`;
+      const inv=await db.collection("users").doc(currentUser).collection("inventory").get();
+      const meSnap=await db.collection("users").doc(currentUser).get();
+      const equipped=meSnap.data().equipped||[];
+      const box=$("avatarInv"); box.innerHTML="";
+      if(inv.empty){box.innerHTML="<div class='muted'>Inventario vacío</div>"; return;}
+      inv.forEach(d=>{
+        const it=d.data();
+        const checked=equipped.includes(d.id)?"checked":"";
+        box.innerHTML+=`<label class="row"><input type="checkbox" name="equip" value="${d.id}" ${checked}> ${it.name}</label>`;
+      });
+      renderEquippedPreview(equipped);
+      // live preview on change
+      box.onchange=()=>{ const ids=[...document.querySelectorAll('input[name="equip"]:checked')].map(i=>i.value); renderEquippedPreview(ids); };
+    }
+    async function saveAvatar(){
+      const ids=[...document.querySelectorAll('input[name="equip"]:checked')].map(i=>i.value);
+      await db.collection("users").doc(currentUser).update({equipped:ids});
+      showToast("🧍 Avatar actualizado");
+    }
+    async function renderEquippedPreview(ids){
+      const box=$("equippedBox"); box.innerHTML="";
+      for(const id of ids){
+        const doc=await db.collection("users").doc(currentUser).collection("inventory").doc(id).get();
+        if(doc.exists){ const it=doc.data(); box.innerHTML+=`<div class="item"><img src="${it.img}"><b>${it.name}</b></div>`; }
+      }
+    }
+
+    // ===== Admin Panel logic =====
+    document.addEventListener("keydown",e=>{
+      if(e.key==="Insert" && currentUser==="ROBLOX"){ toggleAdmin(true); }
+    });
+    function toggleAdmin(show){ $("adminPanel").style.display=show?"block":"none"; }
+
+    async function addItem(){
+      if(currentUser!=="ROBLOX") return alert("Solo admin");
+      const name=$("itName").value.trim(), img=$("itImg").value.trim();
+      const price=parseInt($("itPrice").value)||0, stock=parseInt($("itStock").value)||0;
+      const tagText=$("itTagText").value.trim(), tagColor=$("itTagColor").value.trim(), tagBg=$("itTagBg").value.trim();
+      const item={name,img,price,stock,ts:Date.now()};
+      if(tagText) item.tag={text:tagText,color:tagColor||"#fff",bg:tagBg||"#22c55e"};
+      await db.collection("items").add(item);
+      showToast("✅ Ítem publicado");
+      $("itName").value=$("itImg").value=$("itPrice").value=$("itStock").value=$("itTagText").value=$("itTagColor").value=$("itTagBg").value="";
+    }
+    async function giveRobux(){
+      if(currentUser!=="ROBLOX") return alert("Solo admin");
+      const to=$("giveUser").value.trim(); const n=parseInt($("giveAmount").value)||0; const msg=$("giveMsg").value.trim();
+      if(!to||n<=0) return alert("Datos inválidos");
+      const ref=db.collection("users").doc(to); const s=await ref.get(); if(!s.exists) return alert("Usuario no existe");
+      await ref.update({robux:(s.data().robux||0)+n});
+      showToast(`💸 +${n} Robux para ${to}`); $("giveUser").value=$("giveAmount").value=$("giveMsg").value="";
+      // opcional: guardar notificación
+      await ref.collection("notifications").add({type:"grant",from:"ROBLOX",amount:n,msg,ts:Date.now()});
+    }
+    async function banUser(flag){
+      if(currentUser!=="ROBLOX") return alert("Solo admin");
+      const u=$("banUser").value.trim(), reason=$("banReason").value.trim(), message=$("banMessage").value.trim();
+      if(!u) return alert("Usuario requerido");
+      const ref=db.collection("users").doc(u); const s=await ref.get(); if(!s.exists) return alert("Usuario no existe");
+      await ref.update({banned:{flag,reason:reason|| (flag?"Rule violation":""), msg:message||""}});
+      showToast(flag?"🚫 Usuario banneado":"✅ Ban removido");
+    }
+
+    // Admin: toggle campos de promo en panel principal
+    const typeSel=$("pcType");
+    if(typeSel){
+      typeSel.onchange=()=>{ if(typeSel.value==="robux"){ $("pcRobuxBox").classList.remove("hidden"); $("pcItemBox").classList.add("hidden"); } else { $("pcItemBox").classList.remove("hidden"); $("pcRobuxBox").classList.add("hidden"); } }
+    }
+    async function createPromocode(){
+      if(currentUser!=="ROBLOX") return alert("Solo admin");
+      const code=$("pcCode").value.trim(), type=$("pcType").value;
+      if(!code) return alert("Falta código");
+      if(type==="robux"){
+        const amount=parseInt($("pcRobux").value)||0;
+        await db.collection("promocodes").doc(code).set({type:"robux",amount,active:true,createdBy:"ROBLOX",ts:Date.now()});
+      }else{
+        const itemId=$("pcItemId").value.trim(); if(!itemId) return alert("Falta ID de ítem");
+        await db.collection("promocodes").doc(code).set({type:"item",itemId,active:true,createdBy:"ROBLOX",ts:Date.now()});
+      }
+      showToast("✅ Código creado");
+      $("pcCode").value=$("pcRobux").value=$("pcItemId").value="";
+    }
+  </script>
+</body>
+</html>
