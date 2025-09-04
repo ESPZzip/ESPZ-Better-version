@@ -27,11 +27,6 @@
     .muted{color:var(--muted)}
     #adminPanel{position:fixed;inset:60px 8% auto 8%;background:#0b1220;border:1px solid #1e2b43;border-radius:14px;padding:16px;z-index:50;display:none;max-height:80vh;overflow:auto}
     #closeAdmin{position:absolute;top:10px;right:10px}
-    .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .list{border:1px solid #1b2940;border-radius:12px;padding:10px;max-height:300px;overflow:auto}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .kbd{padding:2px 6px;border:1px solid #2b3953;border-radius:6px;background:#0d172a;font-size:.8rem}
-    .idbox{font-size:.7rem;opacity:.7;margin-top:4px}
   </style>
   <!-- Firebase v8 -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
@@ -64,10 +59,6 @@
     <button class="btn" onclick="loadPromocodes()">Promocodes</button>
     <button class="btn" onclick="loadTradeos()">Tradeos</button>
     <button class="btn" onclick="loadFriends()">Friends</button>
-
-    <div class="card" style="margin-top:auto">
-      <div class="muted">Tip admin: abre panel con <span class="kbd">Insert</span></div>
-    </div>
   </aside>
 
   <main id="content">
@@ -109,6 +100,7 @@
       <button class="inline-btn" onclick="addItem()">Publicar ítem</button>
     </div>
 
+    <!-- NUEVO: eliminar ítem -->
     <div class="card">
       <h3>Eliminar ítem del Marketplace</h3>
       <input id="delItemId" placeholder="ID del ítem">
@@ -117,48 +109,25 @@
   </div>
 
   <script>
-    // ===== Firebase =====
     const firebaseConfig = {
       apiKey: "AIzaSyBwj_as6pb5Bg81F9Cl9VWTKkekMM9Exfk",
       authDomain: "pekora-forum.firebaseapp.com",
       projectId: "pekora-forum"
     };
     firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
+    const db=firebase.firestore();
     let currentUser=null;
+
     function $(id){return document.getElementById(id);}
 
-    // === Registro/Login simplificados (igual que antes) ===
-    async function register(){/* ... igual a antes ... */}
-    async function login(){/* ... igual a antes ... */}
-    async function logout(){/* ... igual a antes ... */}
-    async function startApp(){/* ... igual a antes ... */}
-    async function updateRobux(){/* ... igual a antes ... */}
+    // ======= funciones básicas (login/register/logout/startApp) =======
+    async function register(){/* ...igual que antes... */}
+    async function login(){/* ...igual que antes... */}
+    function logout(){/* ...igual que antes... */}
+    async function startApp(){/* ...igual que antes... */}
+    async function updateRobux(){/* ...igual que antes... */}
 
-    // === Marketplace con ID visible para ROBLOX ===
-    async function loadMarket(){
-      const c=$("content");
-      c.innerHTML=`<div class="card"><h2>Marketplace</h2><div id="marketGrid" class="grid">Cargando…</div></div>`;
-      const q=await db.collection("items").orderBy("ts","desc").get();
-      const grid=$("marketGrid");grid.innerHTML="";
-      if(q.empty){grid.innerHTML="<div class='muted'>No hay ítems aún</div>";return;}
-      q.forEach(doc=>{
-        const it=doc.data(),id=doc.id;
-        const tag=it.tag?`<span class="tag" style="color:${it.tag.color};background:${it.tag.bg}">${it.tag.text}</span>`:"";
-        grid.innerHTML+=`
-          <div class="item">
-            ${tag}
-            <img src="${it.img||""}">
-            <b>${it.name||"-"}</b>
-            <div>${it.price||0} 💰 · Stock: <span id="stock_${id}">${it.stock||0}</span></div>
-            ${currentUser==="ROBLOX"?`<div class="idbox">ID: ${id}</div>`:""}
-            <button class="inline-btn" onclick="buyItem('${id}')">Comprar</button>
-          </div>`;
-      });
-    }
-
-    // === Fix enviar tradeo ===
+    // ======= FIX botón de enviar tradeo =======
     async function sendTrade(friend){
       const offered=Array.from(document.querySelectorAll('input[name="offer"]:checked')).map(i=>i.value);
       const requested=Array.from(document.querySelectorAll('input[name="request"]:checked')).map(i=>i.value);
@@ -178,7 +147,7 @@
       alert("Tradeo enviado");loadTradeos();
     }
 
-    // === Admin eliminar ítem ===
+    // ======= Eliminar ítem (Admin) =======
     async function removeItem(){
       if(currentUser!=="ROBLOX")return alert("Solo admin");
       const id=$("delItemId").value.trim();
