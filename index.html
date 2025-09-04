@@ -2,10 +2,10 @@
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
-  <title>test</title>
+  <title>Revival Hub</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <style>
-    :root{--bg:#0f172a;--panel:#111827;--muted:#334155;--text:#e5e7eb;--acc:#22c55e}
+    :root{--bg:#0f172a;--panel:#111827;--muted:#334155;--text:#e5e7eb}
     *{box-sizing:border-box}
     body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:var(--bg);color:var(--text);display:flex;min-height:100vh}
     #sidebar{width:220px;background:var(--panel);padding:16px 12px;display:flex;flex-direction:column;gap:8px}
@@ -15,24 +15,19 @@
     .btn:hover{background:#222f43}
     #content{flex:1;padding:20px}
     .card{background:#0b1220;border:1px solid #1b2940;border-radius:14px;padding:16px;margin-bottom:16px}
-    input,select,textarea{width:100%;padding:10px;border:1px solid #263349;border-radius:10px;background:#0b1324;color:var(--text);margin:6px 0}
+    input,textarea{width:100%;padding:10px;border:1px solid #263349;border-radius:10px;background:#0b1324;color:var(--text);margin:6px 0}
     label{font-size:.9rem;opacity:.9}
     .row{display:flex;gap:12px;flex-wrap:wrap}
-    .col{flex:1;min-width:220px}
     .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px}
     .item{background:#0b1220;border:1px solid #22304a;border-radius:12px;padding:10px}
     .item img{width:100%;height:120px;object-fit:cover;border-radius:8px}
-    .tag{display:inline-block;font-size:.75rem;margin:6px 0;padding:2px 6px;border-radius:6px}
     .muted{color:#9ca3af}
-    .danger{color:#ef4444}
-    .ok{color:#22c55e}
-    .hidden{display:none}
-    #adminPanel{position:fixed;inset:60px 10% auto 10%;background:#0b1220;border:1px solid #1e2b43;border-radius:14px;padding:16px;z-index:50;display:none;max-height:80vh;overflow:auto}
     .inline-btn{padding:6px 10px;border:1px solid #2b3953;border-radius:8px;background:#182339;color:var(--text);cursor:pointer}
     .inline-btn:hover{background:#1b2740}
+    .hidden{display:none}
     .pill{display:inline-block;padding:2px 8px;border:1px solid #2b3953;border-radius:999px;font-size:.8rem;margin-left:6px}
   </style>
-  <!-- Firebase v8 -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
@@ -60,59 +55,34 @@
     <button class="btn" onclick="loadMarket()">Marketplace</button>
     <button class="btn" onclick="loadProfile()">Profile</button>
     <button class="btn" onclick="loadPromocodes()">Promocodes</button>
-    <button class="btn" onclick="loadTradeos()" id="btnTradeos">Tradeos</button>
+    <button class="btn" onclick="loadTradeos()">Tradeos</button>
     <button class="btn" onclick="loadFriends()">Friends</button>
-
-    <div id="adminHint" class="card hidden">
-      <div class="muted">Cuenta ROBLOX: presiona <b>Insert</b> para abrir Admin Panel.</div>
-    </div>
   </aside>
 
   <main id="content">
-    <div class="card">
-      <h2>Bienvenido a Revival Hub</h2>
-      <p class="muted">Regístrate o inicia sesión para empezar.</p>
-    </div>
+    <div class="card"><h2>Bienvenido a Revival Hub</h2><p class="muted">Regístrate o inicia sesión para empezar.</p></div>
   </main>
-
-  <!-- Admin Panel -->
-  <div id="adminPanel">
-    <h2>Admin Panel</h2>
-    <!-- contenido admin (ban, dar robux, items, etc.) -->
-  </div>
 
   <script>
     // === Firebase ===
-    const firebaseConfig = {
-      apiKey: "AIzaSyBwj_as6pb5Bg81F9Cl9VWTKkekMM9Exfk",
-      authDomain: "pekora-forum.firebaseapp.com",
-      projectId: "pekora-forum",
-      storageBucket: "pekora-forum.firebasestorage.app",
-      messagingSenderId: "161910967859",
-      appId: "1:161910967859:web:6a28cecaae74b9b7e9dd46",
-      measurementId: "G-BPBTW5KBRK"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db=firebase.firestore();
+    const firebaseConfig={apiKey:"AIzaSyBwj_as6pb5Bg81F9Cl9VWTKkekMM9Exfk",authDomain:"pekora-forum.firebaseapp.com",projectId:"pekora-forum"};
+    firebase.initializeApp(firebaseConfig);const db=firebase.firestore();
     let currentUser=null;
 
-    // === Registro/Login ===
+    // === Registro / Login ===
     async function register(){
-      const user=document.getElementById("user").value;
-      const pass=document.getElementById("pass").value;
-      if(!user||!pass) return alert("Completa los campos");
-      const snap=await db.collection("users").doc(user).get();
-      if(snap.exists) return alert("Usuario ya existe");
-      await db.collection("users").doc(user).set({username:user,password:pass,robux:100,friends:[],requests:[]});
-      alert("Registrado correctamente, inicia sesión");
+      const u=document.getElementById("user").value,p=document.getElementById("pass").value;
+      if(!u||!p) return alert("Completa los campos");
+      if((await db.collection("users").doc(u).get()).exists) return alert("Usuario ya existe");
+      await db.collection("users").doc(u).set({username:u,password:p,robux:100,friends:[],requests:[]});
+      alert("Registrado correctamente, ahora inicia sesión");
     }
     async function login(){
-      const user=document.getElementById("user").value;
-      const pass=document.getElementById("pass").value;
-      const snap=await db.collection("users").doc(user).get();
+      const u=document.getElementById("user").value,p=document.getElementById("pass").value;
+      const snap=await db.collection("users").doc(u).get();
       if(!snap.exists) return alert("Usuario no existe");
-      if(snap.data().password!==pass) return alert("Contraseña incorrecta");
-      currentUser=user; localStorage.setItem("currentUser",user); startApp();
+      if(snap.data().password!==p) return alert("Contraseña incorrecta");
+      currentUser=u;localStorage.setItem("currentUser",u);startApp();
     }
     function logout(){currentUser=null;localStorage.removeItem("currentUser");location.reload();}
     window.onload=function(){const u=localStorage.getItem("currentUser");if(u){currentUser=u;startApp();}}
@@ -121,92 +91,92 @@
       document.getElementById("authBox").classList.add("hidden");
       document.getElementById("sessionBox").classList.remove("hidden");
       document.getElementById("who").innerText=currentUser;
-      if(currentUser==="ROBLOX"){document.getElementById("adminTag").classList.remove("hidden");document.getElementById("adminHint").classList.remove("hidden");}
+      if(currentUser==="ROBLOX")document.getElementById("adminTag").classList.remove("hidden");
       updateRobux();
     }
-    async function updateRobux(){const snap=await db.collection("users").doc(currentUser).get();if(snap.exists)document.getElementById("robux").innerText=snap.data().robux;}
+    async function updateRobux(){const s=await db.collection("users").doc(currentUser).get();if(s.exists)document.getElementById("robux").innerText=s.data().robux;}
 
-    // === Secciones ===
-    function loadMarket(){document.getElementById("content").innerHTML="<div class='card'><h2>Marketplace</h2></div>";}
-    function loadProfile(){document.getElementById("content").innerHTML="<div class='card'><h2>Profile</h2></div>";}
-    function loadPromocodes(){document.getElementById("content").innerHTML="<div class='card'><h2>Promocodes</h2></div>";}
-    function loadFriends(){document.getElementById("content").innerHTML="<div class='card'><h2>Friends</h2></div>";}
+    // === Marketplace ===
+    async function loadMarket(){
+      const c=document.getElementById("content");
+      c.innerHTML="<div class='card'><h2>Marketplace</h2><div id='marketItems'>Cargando…</div></div>";
+      const q=await db.collection("items").get();const box=document.getElementById("marketItems");box.innerHTML="";
+      if(q.empty){box.innerHTML="Sin ítems";return;}
+      q.forEach(d=>{const it=d.data();box.innerHTML+=`<div class='item'><img src='${it.img||""}'><div><b>${it.name}</b></div><div>${it.price} 💰</div><button class='inline-btn' onclick="buyItem('${d.id}')">Comprar</button></div>`;});
+    }
+    async function buyItem(id){
+      const r=await db.collection("items").doc(id).get();if(!r.exists)return;
+      const it=r.data();const ur=await db.collection("users").doc(currentUser).get();if(!ur.exists)return;
+      const u=ur.data();if(u.robux<it.price)return alert("No tienes Robux suficientes");
+      await db.collection("users").doc(currentUser).update({robux:u.robux-it.price});
+      await db.collection("users").doc(currentUser).collection("inventory").add(it);
+      alert("Comprado!");updateRobux();
+    }
 
-    // === Tradeos con historial ===
-    async function loadTradeos(){
-      if(!currentUser) return alert("Inicia sesión");
-      const cont=document.getElementById('content');
-      cont.innerHTML=`
-        <div class="card">
-          <h2>Tradeos</h2>
-          <div class="row">
-            <div class="col"><h3>Tus amigos</h3><div id="tradeFriends" class="muted">Cargando…</div></div>
-            <div class="col"><h3>Trades recibidos</h3><div id="receivedTrades" class="muted">Cargando…</div></div>
-          </div>
-          <div class="card">
-            <h3>Historial de trades</h3>
-            <div id="tradeHistory" class="muted">Cargando…</div>
-          </div>
-        </div>`;
-      renderTradeFriends();renderReceivedTrades();renderTradeHistory();
+    // === Profile ===
+    async function loadProfile(){
+      const c=document.getElementById("content");
+      c.innerHTML="<div class='card'><h2>Mi Perfil</h2><div id='inv'>Cargando inventario…</div></div>";
+      const q=await db.collection("users").doc(currentUser).collection("inventory").get();const box=document.getElementById("inv");box.innerHTML="";
+      if(q.empty){box.innerHTML="No tienes ítems";return;}
+      q.forEach(d=>{const it=d.data();box.innerHTML+=`<div class='item'><img src='${it.img||""}'><div>${it.name}</div></div>`;});
     }
-    async function renderTradeFriends(){
-      const box=document.getElementById('tradeFriends');
-      const me=(await db.collection('users').doc(currentUser).get()).data();
-      box.innerHTML=""; if(!me.friends||!me.friends.length){box.innerHTML='Sin amigos';return;}
-      me.friends.forEach(u=>{const row=document.createElement('div');row.innerHTML=`${u} <button class="inline-btn" onclick="openTradeWith('${u}')">Tradear</button>`;box.appendChild(row);});
+
+    // === Promocodes ===
+    async function loadPromocodes(){
+      const c=document.getElementById("content");
+      c.innerHTML=`<div class='card'><h2>Promocodes</h2><input id='code' placeholder='Código'><button class='inline-btn' onclick='redeemCode()'>Canjear</button><div id='codeMsg'></div></div>`;
+      if(currentUser==="ROBLOX"){c.innerHTML+=`<div class='card'><h3>Crear código</h3><input id='newCode' placeholder='Código'><input id='reward' placeholder='Recompensa'><button class='inline-btn' onclick='createCode()'>Crear</button></div>`;}
     }
-    async function openTradeWith(friend){
-      const cont=document.getElementById('content');
-      cont.innerHTML=`
-        <div class="card">
-          <h2>Enviar trade a ${friend}</h2>
-          <h3>Selecciona tus ítems</h3><div id="myInv" class="grid"></div>
-          <h3>Selecciona ítems de ${friend}</h3><div id="friendInv" class="grid"></div>
-          <button class="inline-btn" onclick="sendTrade('${friend}')">Enviar Trade</button>
-        </div>`;
-      const myGrid=document.getElementById('myInv');const myQs=await db.collection('users').doc(currentUser).collection('inventory').get();
-      myGrid.innerHTML="";if(myQs.empty){myGrid.innerHTML='<div class="muted">No tienes ítems</div>';}
-      myQs.forEach(d=>{const it=d.data();myGrid.innerHTML+=`<label class="item"><img src="${it.img||''}"><div><b>${it.name||'-'}</b></div><div class="muted">⭐ ${it.value||0}</div><input type="checkbox" class="tradeOffer" value="${d.id}"></label>`;});
-      const fGrid=document.getElementById('friendInv');const fQs=await db.collection('users').doc(friend).collection('inventory').get();
-      fGrid.innerHTML="";if(fQs.empty){fGrid.innerHTML='<div class="muted">Amigo sin ítems</div>';}
-      fQs.forEach(d=>{const it=d.data();fGrid.innerHTML+=`<label class="item"><img src="${it.img||''}"><div><b>${it.name||'-'}</b></div><div class="muted">⭐ ${it.value||0}</div><input type="checkbox" class="tradeWant" value="${d.id}"></label>`;});
+    async function redeemCode(){
+      const c=document.getElementById("code").value;const snap=await db.collection("codes").doc(c).get();if(!snap.exists)return alert("Código inválido");
+      const data=snap.data();if(data.robux){const uref=db.collection("users").doc(currentUser);const usnap=await uref.get();await uref.update({robux:usnap.data().robux+data.robux});}
+      if(data.item){await db.collection("users").doc(currentUser).collection("inventory").add(data.item);}
+      alert("Código canjeado!");updateRobux();
     }
-    async function sendTrade(target){
-      const myChecks=Array.from(document.querySelectorAll('.tradeOffer:checked')).map(c=>c.value);
-      const wantChecks=Array.from(document.querySelectorAll('.tradeWant:checked')).map(c=>c.value);
-      if(!myChecks.length&&!wantChecks.length) return alert("Selecciona ítems");
-      const offerItems=[];for(const id of myChecks){const snap=await db.collection('users').doc(currentUser).collection('inventory').doc(id).get();if(snap.exists)offerItems.push({id,...snap.data()});}
-      const wantItems=[];for(const id of wantChecks){const snap=await db.collection('users').doc(target).collection('inventory').doc(id).get();if(snap.exists)wantItems.push({id,...snap.data()});}
-      await db.collection('users').doc(target).collection('trades').add({from:currentUser,offer:offerItems,want:wantItems,ts:Date.now()});
-      alert("Trade enviado");loadTradeos();
+    async function createCode(){
+      const c=document.getElementById("newCode").value;const r=document.getElementById("reward").value;
+      await db.collection("codes").doc(c).set({robux:parseInt(r)});alert("Código creado!");
     }
-    async function renderReceivedTrades(){
-      const box=document.getElementById('receivedTrades');const qs=await db.collection('users').doc(currentUser).collection('trades').get();
-      box.innerHTML="";if(qs.empty){box.innerHTML='Sin trades';return;}
-      qs.forEach(d=>{const tr=d.data();let html=`<div><b>De:</b> ${tr.from}</div>`;
-        if(tr.offer?.length){html+=`<div><u>Te ofrece:</u><br>${tr.offer.map(it=>`${it.name} ⭐${it.value}`).join('<br>')}</div>`;}
-        if(tr.want?.length){html+=`<div><u>Quiere recibir:</u><br>${tr.want.map(it=>`${it.name} ⭐${it.value}`).join('<br>')}</div>`;}
-        const row=document.createElement('div');row.className='card';
-        row.innerHTML=`${html}<button class="inline-btn" onclick="acceptTrade('${d.id}','${tr.from}')">Aceptar</button><button class="inline-btn" onclick="rejectTrade('${d.id}')">Rechazar</button>`;
-        box.appendChild(row);});
+
+    // === Friends ===
+    async function loadFriends(){
+      const c=document.getElementById("content");
+      c.innerHTML="<div class='card'><h2>Amigos</h2><input id='searchFriend' placeholder='Buscar usuario'><button class='inline-btn' onclick='sendRequest()'>Agregar</button><div id='friendSection'></div></div>";
+      renderFriends();
     }
-    async function acceptTrade(tradeId,fromUser){
-      const tRef=db.collection('users').doc(currentUser).collection('trades').doc(tradeId);
-      const tSnap=await tRef.get();if(!tSnap.exists)return;const tr=tSnap.data();
-      const receivedItems=[];const givenItems=[];
-      for(const it of tr.offer||[]){await db.collection('users').doc(currentUser).collection('inventory').add({name:it.name,img:it.img,value:it.value});await db.collection('users').doc(fromUser).collection('inventory').doc(it.id).delete();receivedItems.push(it.name);}
-      for(const it of tr.want||[]){await db.collection('users').doc(fromUser).collection('inventory').add({name:it.name,img:it.img,value:it.value});await db.collection('users').doc(currentUser).collection('inventory').doc(it.id).delete();givenItems.push(it.name);}
-      await db.collection("tradeHistory").add({from:fromUser,to:currentUser,offer:tr.offer||[],want:tr.want||[],givenItems,receivedItems,ts:Date.now()});
-      await tRef.delete();alert("Trade aceptado");loadTradeos();
+    async function sendRequest(){
+      const target=document.getElementById("searchFriend").value;if(!target)return;
+      const tRef=db.collection("users").doc(target);if(!(await tRef.get()).exists)return alert("Usuario no encontrado");
+      await tRef.update({requests:firebase.firestore.FieldValue.arrayUnion(currentUser)});alert("Solicitud enviada");
     }
-    async function rejectTrade(tradeId){await db.collection('users').doc(currentUser).collection('trades').doc(tradeId).delete();alert("Trade rechazado");loadTradeos();}
-    async function renderTradeHistory(){
-      const box=document.getElementById('tradeHistory');const qs=await db.collection("tradeHistory").orderBy("ts","desc").limit(10).get();
-      box.innerHTML="";if(qs.empty){box.innerHTML="Sin historial";return;}
-      qs.forEach(d=>{const tr=d.data();const date=new Date(tr.ts).toLocaleString();const row=document.createElement("div");row.className="muted";
-        row.innerHTML=`<b>${tr.from}</b> ↔ <b>${tr.to}</b><br>Ofreció: ${(tr.offer||[]).map(it=>it.name).join(", ")||"Nada"}<br>Pidió: ${(tr.want||[]).map(it=>it.name).join(", ")||"Nada"}<br><small>${date}</small><hr>`;
-        box.appendChild(row);});
+    async function renderFriends(){
+      const uref=db.collection("users").doc(currentUser);const u=(await uref.get()).data();
+      const box=document.getElementById("friendSection");box.innerHTML="<h3>Solicitudes</h3>";
+      (u.requests||[]).forEach(r=>{box.innerHTML+=`${r} <button class='inline-btn' onclick="acceptFriend('${r}')">Aceptar</button><br>`;});
+      box.innerHTML+="<h3>Amigos</h3>";
+      (u.friends||[]).forEach(f=>{box.innerHTML+=`${f} <button class='inline-btn' onclick="giftRobuxPrompt('${f}')">🎁 Dar Robux</button><br>`;});
+    }
+    async function acceptFriend(name){
+      const uref=db.collection("users").doc(currentUser);await uref.update({friends:firebase.firestore.FieldValue.arrayUnion(name),requests:firebase.firestore.FieldValue.arrayRemove(name)});
+      const fref=db.collection("users").doc(name);await fref.update({friends:firebase.firestore.FieldValue.arrayUnion(currentUser)});
+      renderFriends();
+    }
+
+    // 🎁 Dar Robux con mensaje
+    function giftRobuxPrompt(friend){
+      const amount=prompt("¿Cuántos Robux quieres enviar a "+friend+"?");if(!amount)return;
+      const msg=prompt("Mensaje para "+friend+":","Aquí tienes!");
+      sendGift(friend,parseInt(amount),msg);
+    }
+    async function sendGift(friend,amount,msg){
+      const uref=db.collection("users").doc(currentUser);const usnap=await uref.get();const u=usnap.data();
+      if(u.robux<amount)return alert("No tienes suficientes Robux");
+      await uref.update({robux:u.robux-amount});
+      const fref=db.collection("users").doc(friend);const fsnap=await fref.get();
+      await fref.update({robux:(fsnap.data().robux||0)+amount});
+      alert("Enviaste "+amount+" Robux a "+friend+" con mensaje: "+msg);
+      updateRobux();
     }
   </script>
 </body>
