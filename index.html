@@ -37,7 +37,7 @@
       <div id="authBox">
         <input id="user" placeholder="Usuario">
         <input id="pass" placeholder="Contraseña" type="password">
-        <div class="grid" style="grid-template-columns:1fr 1fr">
+        <div class="row">
           <button class="btn" onclick="register()">Registrar</button>
           <button class="btn" onclick="login()">Login</button>
         </div>
@@ -63,23 +63,71 @@
   <div id="toasts"></div>
 
   <script>
+    // Firebase
     const firebaseConfig={apiKey:"AIzaSyBwj_as6pb5Bg81F9Cl9VWTKkekMM9Exfk",authDomain:"pekora-forum.firebaseapp.com",projectId:"pekora-forum"};
     firebase.initializeApp(firebaseConfig);
     const db=firebase.firestore();
+
     let currentUser=null;
     function $(id){return document.getElementById(id);}
     function showToast(msg){const box=$("toasts");const t=document.createElement("div");t.className="toast";t.innerText=msg;box.appendChild(t);setTimeout(()=>t.remove(),4000);}
 
-    // ======= Login/Register (igual que antes) =======
-    async function register(){/* ... */}
-    async function login(){/* ... */}
-    function logout(){/* ... */}
-    async function startApp(){/* ... */}
+    // ========= Registro/Login =========
+    async function register(){
+      const u=$("user").value.trim(), p=$("pass").value.trim();
+      if(!u||!p) return alert("Faltan datos");
+      const ref=db.collection("users").doc(u);
+      const snap=await ref.get();
+      if(snap.exists) return alert("Usuario ya existe");
+      await ref.set({pass:p,robux:100,friends:[],inventory:[]});
+      localStorage.setItem("session",u);
+      startApp(u);
+    }
+    async function login(){
+      const u=$("user").value.trim(), p=$("pass").value.trim();
+      if(!u||!p) return alert("Faltan datos");
+      const ref=db.collection("users").doc(u);
+      const snap=await ref.get();
+      if(!snap.exists) return alert("No existe usuario");
+      if(snap.data().pass!==p) return alert("Contraseña incorrecta");
+      localStorage.setItem("session",u);
+      startApp(u);
+    }
+    function logout(){
+      localStorage.removeItem("session");
+      location.reload();
+    }
+    async function startApp(u){
+      currentUser=u;
+      $("authBox").classList.add("hidden");
+      $("sessionBox").classList.remove("hidden");
+      $("who").innerText=u;
+      if(u==="ROBLOX")$("adminTag").classList.remove("hidden");
+      updateRobux();
+    }
+    async function updateRobux(){
+      const snap=await db.collection("users").doc(currentUser).get();
+      if(snap.exists)$("robux").innerText=snap.data().robux||0;
+    }
+    window.onload=()=>{const s=localStorage.getItem("session");if(s)startApp(s);};
 
-    // ======= Tradeos =======
+    // ========= Secciones =========
+    async function loadMarket(){
+      $("content").innerHTML=`<div class="card"><h2>Marketplace</h2><p>Aquí estarán los ítems.</p></div>`;
+    }
+    async function loadProfile(){
+      $("content").innerHTML=`<div class="card"><h2>Profile</h2><p>Inventario y datos del usuario.</p></div>`;
+    }
+    async function loadPromocodes(){
+      $("content").innerHTML=`<div class="card"><h2>Promocodes</h2><p>Canjea códigos por recompensas.</p></div>`;
+    }
+    async function loadFriends(){
+      $("content").innerHTML=`<div class="card"><h2>Friends</h2><p>Solicitudes y amigos.</p></div>`;
+    }
+
+    // ========= Tradeos =========
     async function loadTradeos(){
-      const c=$("content");
-      c.innerHTML=`
+      $("content").innerHTML=`
         <div class="card">
           <h2>Tradeos</h2>
           <div class="cols">
@@ -95,60 +143,26 @@
         </div>`;
       renderTrades();
     }
-
     function renderTrades(){
       const incBox=$("incoming"),outBox=$("outgoing");
-
-      // Entrantes en tiempo real
-      db.collection("trades")
-        .where("to","==",currentUser)
-        .where("status","==","pending")
-        .orderBy("ts","desc")
-        .onSnapshot(snapshot=>{
-          incBox.innerHTML="";
-          if(snapshot.empty){incBox.innerHTML="<div class='muted'>Sin trades</div>";return;}
-          snapshot.forEach(d=>{
-            const t=d.data();
-            incBox.innerHTML+=`
-              <div class="card">
-                <div><b>${t.from}</b> te envió un trade (${t.offered.length} ítem(s) por ${t.requested.length})</div>
-                <div class="row">
-                  <button class="inline-btn" onclick="acceptTrade('${d.id}')">Aceptar</button>
-                  <button class="inline-btn" onclick="declineTrade('${d.id}')">Rechazar</button>
-                </div>
-              </div>`;
-            if(!t.notified){
-              showToast("📩 Nuevo tradeo recibido de "+t.from);
-              db.collection("trades").doc(d.id).update({notified:true});
-            }
-          });
+      db.collection("trades").where("to","==",currentUser).onSnapshot(snapshot=>{
+        incBox.innerHTML="";
+        if(snapshot.empty){incBox.innerHTML="<div class='muted'>Sin trades</div>";return;}
+        snapshot.forEach(d=>{
+          const t=d.data();
+          incBox.innerHTML+=`<div class="card"><div><b>${t.from}</b> te envió un trade</div></div>`;
+          if(!t.notified){showToast("📩 Nuevo tradeo recibido de "+t.from);db.collection("trades").doc(d.id).update({notified:true});}
         });
-
-      // Salientes en tiempo real
-      db.collection("trades")
-        .where("from","==",currentUser)
-        .orderBy("ts","desc")
-        .onSnapshot(snapshot=>{
-          outBox.innerHTML="";
-          if(snapshot.empty){outBox.innerHTML="<div class='muted'>Sin trades</div>";return;}
-          snapshot.forEach(d=>{
-            const t=d.data();
-            outBox.innerHTML+=`<div class="card">Para <b>${t.to}</b> · Estado: ${t.status}</div>`;
-          });
-        });
-    }
-
-    async function sendTrade(friend,offeredObjs,requestedObjs){
-      await db.collection("trades").add({
-        from:currentUser,to:friend,
-        offered:offeredObjs,requested:requestedObjs,
-        status:"pending",ts:Date.now(),notified:false
       });
-      showToast("✅ Tradeo enviado a "+friend);
+      db.collection("trades").where("from","==",currentUser).onSnapshot(snapshot=>{
+        outBox.innerHTML="";
+        if(snapshot.empty){outBox.innerHTML="<div class='muted'>Sin trades</div>";return;}
+        snapshot.forEach(d=>{
+          const t=d.data();
+          outBox.innerHTML+=`<div class="card">Para <b>${t.to}</b> · Estado: ${t.status}</div>`;
+        });
+      });
     }
-
-    async function acceptTrade(id){/* ... */}
-    async function declineTrade(id){/* ... */}
   </script>
 </body>
 </html>
