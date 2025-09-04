@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
   <meta charset="utf-8"/>
-  <title>Revival Hub</title>
+  <title>XD</title>
   <meta name="viewport" content="width=device-width, initial-scale=1"/>
   <style>
     :root{--bg:#0f172a;--panel:#111827;--text:#e5e7eb;--muted:#94a3b8}
@@ -25,26 +25,18 @@
     .hidden{display:none}
     .pill{display:inline-block;padding:2px 8px;border:1px solid #2b3953;border-radius:999px;font-size:.8rem;margin-left:6px}
     .muted{color:var(--muted)}
-    #adminPanel{position:fixed;inset:60px 8% auto 8%;background:#0b1220;border:1px solid #1e2b43;border-radius:14px;padding:16px;z-index:50;display:none;max-height:80vh;overflow:auto}
-    #closeAdmin{position:absolute;top:10px;right:10px}
-    .cols{display:grid;grid-template-columns:1fr 1fr;gap:16px}
-    .list{border:1px solid #1b2940;border-radius:12px;padding:10px;max-height:300px;overflow:auto}
-    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .kbd{padding:2px 6px;border:1px solid #2b3953;border-radius:6px;background:#0d172a;font-size:.8rem}
-    .idbox{font-size:.7rem;opacity:.7;margin-top:4px}
     /* Toasts */
     #toasts{position:fixed;bottom:20px;right:20px;display:flex;flex-direction:column;gap:10px;z-index:9999}
     .toast{background:#1f2937;color:#fff;padding:10px 16px;border-radius:10px;box-shadow:0 2px 6px rgba(0,0,0,.3);animation:fadein .3s}
     @keyframes fadein{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
   </style>
-  <!-- Firebase v8 -->
+  <!-- Firebase -->
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-app.js"></script>
   <script src="https://www.gstatic.com/firebasejs/8.10.1/firebase-firestore.js"></script>
 </head>
 <body>
   <aside id="sidebar">
     <div id="brand">Revival Hub</div>
-
     <div id="userBox" class="card">
       <div id="authBox">
         <input id="user" placeholder="Usuario">
@@ -57,12 +49,9 @@
       <div id="sessionBox" class="hidden">
         <div>Hola, <b id="who"></b><span id="adminTag" class="pill hidden">ADMIN</span></div>
         <div class="robux">💰 Robux: <b id="robux">0</b></div>
-        <div style="margin-top:8px">
-          <button class="btn" onclick="logout()">Cerrar sesión</button>
-        </div>
+        <div style="margin-top:8px"><button class="btn" onclick="logout()">Cerrar sesión</button></div>
       </div>
     </div>
-
     <button class="btn" onclick="loadMarket()">Marketplace</button>
     <button class="btn" onclick="loadProfile()">Profile</button>
     <button class="btn" onclick="loadPromocodes()">Promocodes</button>
@@ -71,54 +60,32 @@
   </aside>
 
   <main id="content">
-    <div class="card">
-      <h2>Bienvenido a Revival Hub</h2>
-      <p class="muted">Regístrate o inicia sesión para empezar.</p>
-    </div>
+    <div class="card"><h2>Bienvenido a Revival Hub</h2><p class="muted">Regístrate o inicia sesión para empezar.</p></div>
   </main>
 
-  <!-- Panel de Admin -->
-  <div id="adminPanel">
-    <!-- ... igual que antes (banear, dar robux, subir/eliminar items) ... -->
-  </div>
-
-  <!-- Contenedor de notificaciones -->
+  <!-- Toast container -->
   <div id="toasts"></div>
 
   <script>
-    // Firebase
     const firebaseConfig={apiKey:"AIzaSyBwj_as6pb5Bg81F9Cl9VWTKkekMM9Exfk",authDomain:"pekora-forum.firebaseapp.com",projectId:"pekora-forum"};
     firebase.initializeApp(firebaseConfig);
     const db=firebase.firestore();
     let currentUser=null;
     function $(id){return document.getElementById(id);}
+    function showToast(msg){const box=$("toasts");const t=document.createElement("div");t.className="toast";t.innerText=msg;box.appendChild(t);setTimeout(()=>t.remove(),4000);}
 
-    // 🔔 Sistema de toasts
-    function showToast(msg){
-      const box=$("toasts");
-      const t=document.createElement("div");
-      t.className="toast";t.innerText=msg;
-      box.appendChild(t);
-      setTimeout(()=>{t.remove();},4000);
-    }
+    // ======= Login/Register (igual que tenías) =======
+    async function register(){/* ... */}
+    async function login(){/* ... */}
+    function logout(){/* ... */}
+    async function startApp(){/* ... */}
 
-    // ======= Registro/Login (igual al anterior) =======
-    async function register(){/* mismo código de registro */}
-    async function login(){/* mismo código de login */}
-    function logout(){/* igual */}
-    async function startApp(){/* igual */}
-    async function updateRobux(){/* igual */}
-
-    // ======= Tradeos con notificación =======
+    // ======= Tradeos =======
     async function loadTradeos(){
       const c=$("content");
       c.innerHTML=`
         <div class="card">
           <h2>Tradeos</h2>
-          <div class="row">
-            <select id="tradeFriend"></select>
-            <button class="inline-btn" onclick="prepareTrade()">Abrir panel de tradeo</button>
-          </div>
           <div class="cols">
             <div>
               <h3>Entrantes</h3>
@@ -130,16 +97,13 @@
             </div>
           </div>
         </div>`;
-      const u=(await db.collection("users").doc(currentUser).get()).data();
-      const sel=$("tradeFriend");sel.innerHTML="";
-      (u.friends||[]).forEach(f=>sel.innerHTML+=`<option value="${f}">${f}</option>`);
       renderTrades();
     }
 
     function renderTrades(){
       const incBox=$("incoming"),outBox=$("outgoing");
 
-      // Trades entrantes en tiempo real
+      // Entrantes en tiempo real
       db.collection("trades")
         .where("to","==",currentUser)
         .where("status","==","pending")
@@ -151,20 +115,20 @@
             const t=d.data();
             incBox.innerHTML+=`
               <div class="card">
-                <div><b>${t.from}</b> te ofrece ${t.offered.length} item(s) por ${t.requested.length} item(s)</div>
+                <div><b>${t.from}</b> te envió un trade (${t.offered.length} ítem(s) por ${t.requested.length})</div>
                 <div class="row">
                   <button class="inline-btn" onclick="acceptTrade('${d.id}')">Aceptar</button>
                   <button class="inline-btn" onclick="declineTrade('${d.id}')">Rechazar</button>
                 </div>
               </div>`;
-            if(!t.notified && t.to===currentUser){
+            if(!t.notified){
               showToast("📩 Nuevo tradeo recibido de "+t.from);
               db.collection("trades").doc(d.id).update({notified:true});
             }
           });
         });
 
-      // Trades salientes en tiempo real
+      // Salientes en tiempo real
       db.collection("trades")
         .where("from","==",currentUser)
         .orderBy("ts","desc")
@@ -173,38 +137,22 @@
           if(snapshot.empty){outBox.innerHTML="<div class='muted'>Sin trades</div>";return;}
           snapshot.forEach(d=>{
             const t=d.data();
-            outBox.innerHTML+=`<div class="card">
-              <div>Para <b>${t.to}</b> · Estado: ${t.status}</div>
-            </div>`;
+            outBox.innerHTML+=`<div class="card">Para <b>${t.to}</b> · Estado: ${t.status}</div>`;
           });
         });
     }
 
-    async function sendTrade(friend){
-      const offered=Array.from(document.querySelectorAll('input[name="offer"]:checked')).map(i=>i.value);
-      const requested=Array.from(document.querySelectorAll('input[name="request"]:checked')).map(i=>i.value);
-      if(offered.length===0)return alert("Debes ofrecer al menos 1 ítem");
-
-      const offeredObjs=[];for(const id of offered){
-        const d=await db.collection("users").doc(currentUser).collection("inventory").doc(id).get();
-        if(d.exists)offeredObjs.push({owner:currentUser,docId:id,data:d.data()});
-      }
-      const requestedObjs=[];for(const id of requested){
-        const d=await db.collection("users").doc(friend).collection("inventory").doc(id).get();
-        if(d.exists)requestedObjs.push({owner:friend,docId:id,data:d.data()});
-      }
-
+    async function sendTrade(friend,offeredObjs,requestedObjs){
       await db.collection("trades").add({
         from:currentUser,to:friend,
         offered:offeredObjs,requested:requestedObjs,
         status:"pending",ts:Date.now(),notified:false
       });
       showToast("✅ Tradeo enviado a "+friend);
-      loadTradeos();
     }
 
-    async function acceptTrade(id){/* igual que antes */}
-    async function declineTrade(id){/* igual que antes */}
+    async function acceptTrade(id){/* ... */}
+    async function declineTrade(id){/* ... */}
   </script>
 </body>
 </html>
